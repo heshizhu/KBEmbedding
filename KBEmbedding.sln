@@ -9,6 +9,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TransH", "TransH\TransH.vcx
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PTransE", "PTransE\PTransE.vcxproj", "{2CABFB4D-8FF5-4154-B3B7-00C8CFD60E8B}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TransEM", "TransEM\TransEM.vcxproj", "{73DA57FB-CF88-46E9-8AC0-DDF2C93BC9E7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -27,6 +29,10 @@ Global
 		{2CABFB4D-8FF5-4154-B3B7-00C8CFD60E8B}.Debug|Win32.Build.0 = Debug|Win32
 		{2CABFB4D-8FF5-4154-B3B7-00C8CFD60E8B}.Release|Win32.ActiveCfg = Release|Win32
 		{2CABFB4D-8FF5-4154-B3B7-00C8CFD60E8B}.Release|Win32.Build.0 = Release|Win32
+		{73DA57FB-CF88-46E9-8AC0-DDF2C93BC9E7}.Debug|Win32.ActiveCfg = Debug|Win32
+		{73DA57FB-CF88-46E9-8AC0-DDF2C93BC9E7}.Debug|Win32.Build.0 = Debug|Win32
+		{73DA57FB-CF88-46E9-8AC0-DDF2C93BC9E7}.Release|Win32.ActiveCfg = Release|Win32
+		{73DA57FB-CF88-46E9-8AC0-DDF2C93BC9E7}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
