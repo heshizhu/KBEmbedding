@@ -11,6 +11,14 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PTransE", "PTransE\PTransE.
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TransEM", "TransEM\TransEM.vcxproj", "{73DA57FB-CF88-46E9-8AC0-DDF2C93BC9E7}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Train_TransE", "Train_TransE\Train_TransE.vcxproj", "{3BB10FF1-964A-4589-8AE2-B81D653D99DB}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Train_TransH", "Train_TransH\Train_TransH.vcxproj", "{F38B0319-CE12-4B60-A1C5-540FF167D883}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Train_TransR", "Train_TransR\Train_TransR.vcxproj", "{4FFA092F-E940-426A-8937-FDDED9D85AA3}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TransET", "TransET\TransET.vcxproj", "{E86756F7-3B7F-4E30-972D-7964D5078319}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -33,6 +41,22 @@ Global
 		{73DA57FB-CF88-46E9-8AC0-DDF2C93BC9E7}.Debug|Win32.Build.0 = Debug|Win32
 		{73DA57FB-CF88-46E9-8AC0-DDF2C93BC9E7}.Release|Win32.ActiveCfg = Release|Win32
 		{73DA57FB-CF88-46E9-8AC0-DDF2C93BC9E7}.Release|Win32.Build.0 = Release|Win32
+		{3BB10FF1-964A-4589-8AE2-B81D653D99DB}.Debug|Win32.ActiveCfg = Debug|Win32
+		{3BB10FF1-964A-4589-8AE2-B81D653D99DB}.Debug|Win32.Build.0 = Debug|Win32
+		{3BB10FF1-964A-4589-8AE2-B81D653D99DB}.Release|Win32.ActiveCfg = Release|Win32
+		{3BB10FF1-964A-4589-8AE2-B81D653D99DB}.Release|Win32.Build.0 = Release|Win32
+		{F38B0319-CE12-4B60-A1C5-540FF167D883}.Debug|Win32.ActiveCfg = Debug|Win32
+		{F38B0319-CE12-4B60-A1C5-540FF167D883}.Debug|Win32.Build.0 = Debug|Win32
+		{F38B0319-CE12-4B60-A1C5-540FF167D883}.Release|Win32.ActiveCfg = Release|Win32
+		{F38B0319-CE12-4B60-A1C5-540FF167D883}.Release|Win32.Build.0 = Release|Win32
+		{4FFA092F-E940-426A-8937-FDDED9D85AA3}.Debug|Win32.ActiveCfg = Debug|Win32
+		{4FFA092F-E940-426A-8937-FDDED9D85AA3}.Debug|Win32.Build.0 = Debug|Win32
+		{4FFA092F-E940-426A-8937-FDDED9D85AA3}.Release|Win32.ActiveCfg = Release|Win32
+		{4FFA092F-E940-426A-8937-FDDED9D85AA3}.Release|Win32.Build.0 = Release|Win32
+		{E86756F7-3B7F-4E30-972D-7964D5078319}.Debug|Win32.ActiveCfg = Debug|Win32
+		{E86756F7-3B7F-4E30-972D-7964D5078319}.Debug|Win32.Build.0 = Debug|Win32
+		{E86756F7-3B7F-4E30-972D-7964D5078319}.Release|Win32.ActiveCfg = Release|Win32
+		{E86756F7-3B7F-4E30-972D-7964D5078319}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

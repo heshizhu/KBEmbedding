@@ -9,6 +9,7 @@
 #include <string>
 #include <ctime>
 #include <cstring>
+#include <sstream>
 #include <omp.h>
 #include "experiment.h"
 
@@ -23,7 +24,7 @@ double loss_sum;
 //全局参数
 bool L1_Flag = 0;
 bool Neg_Scope = 1;//0:global; 1:relation
-int  Neg_Method = 3;//1:unif; 2:bern; 3:both
+int  Neg_Method = 2;//1:unif; 2:bern; 3:both
 int  Grad_Method = 1;//1:SGD; 2:AdaGrad
 int  Batch_Size = 2480;//如果为0表示不采用mini-batch
 int  Epoch_Size = 1000;
@@ -33,6 +34,7 @@ int    n = 50;
 double margin = 1;
 double rate = 0.001;
 string model_name;//50.bern或100.unif或50.both
+string version = "both";
 
 //embedding
 vector<vector<double> > ent_vec, ent_vec_tmp;
@@ -255,9 +257,9 @@ void trainTriple(){
 		return;
 	}
 
-	int batchs = train_tri_num / Batch_Size;//每个batch有batch_size个样本
+	int batches = train_tri_num / Batch_Size;//每个batch有batch_size个样本
 
-	for (int bat = 0; bat < batchs; bat++){
+	for (int bat = 0; bat < batches; bat++){
 		int start = bat * Batch_Size;
 		int end = (bat + 1) * Batch_Size;
 		if (end > train_tri_num)
@@ -443,6 +445,23 @@ void saveModel(int epoch){
 
 
 void initModel(){
+	version = "both";
+	if (Neg_Method == 1) version = "unif";
+	if (Neg_Method == 2) version = "bern";
+	
+	char dim_ch[5];
+	sprintf(dim_ch, "%d", n);
+	string dim_str = dim_ch;
+
+	model_name = dim_str + "." + version;
+
+	if (Margin_Type == 2)
+		model_name += ".mar2";
+	else if (Margin_Type == 3)
+		model_name += ".mar3";
+	else
+		model_name += ".mar1";
+
 	ent_vec.resize(ent_num);
 	for (int ee = 0; ee < ent_num; ee++){
 		ent_vec[ee].resize(n);
@@ -457,6 +476,24 @@ void initModel(){
 			rel_vec[rr][dd] = rand(-1, 1);
 		normalize(rel_vec[rr]);
 	}
+	if (Margin_Type != 1){
+		FILE* f1 = fopen(("entity2vec." + dim_str + "." + version + ".mar1").c_str(), "r");
+		for (int ee = 0; ee < ent_num; ee++)
+		{
+			for (int dd = 0; dd < n; dd++)
+				fscanf(f1, "%lf", &ent_vec[ee][dd]);
+		}
+		fclose(f1);
+
+		FILE* f2 = fopen(("relation2vec." + dim_str + "." + version + ".mar1").c_str(), "r");
+		for (int rr = 0; rr < rel_num; rr++)
+		{
+			for (int dd = 0; dd < n; dd++)
+				fscanf(f2, "%lf", &rel_vec[rr][dd]);			
+		}
+		fclose(f2);
+	}
+
 	if (Margin_Type == 2){
 		rel_margin.resize(rel_num, margin);
 	}
@@ -550,24 +587,7 @@ void loadCorpus(){
 }
 
 void trainModel(){
-	time_t lt;
-
-	string version = "both";
-	if (Neg_Method == 1) version = "unif";
-	if (Neg_Method == 2) version = "bern";
-
-	char dim_ch[5];
-	sprintf(dim_ch, "%d", n);
-	string dim_str = dim_ch;
-
-	model_name = dim_str + "." + version;
-	
-	if (Margin_Type == 2)
-		model_name += ".mar2";
-	else if (Margin_Type == 3)
-		model_name += ".mar3";
-	else 
-		model_name += ".mar1";
+	time_t lt;	
 
 	for (int epoch = 0; epoch < Epoch_Size; epoch++){
 		lt = time(NULL);
