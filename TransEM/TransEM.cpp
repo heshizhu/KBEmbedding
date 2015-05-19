@@ -22,7 +22,7 @@ string model_base_path = "";//currrent path
 double loss_sum;
 
 //全局参数
-bool L1_Flag = 0;
+bool L1_Flag = 1;
 bool Neg_Scope = 1;//0:global; 1:relation
 int  Neg_Method = 2;//1:unif; 2:bern; 3:both
 int  Grad_Method = 1;//1:SGD; 2:AdaGrad
@@ -33,16 +33,14 @@ int  Margin_Type = 2;//1:所有关系共享; 2:每个关系一个margin; 3:每个关系前后两个m
 int    n = 50;
 double margin = 1;
 double rate = 0.001;
-string model_name;//50.bern或100.unif或50.both
-string version = "both";
+string dim_str;
+string version;
+string model_name;
 
 //embedding
 vector<vector<double> > ent_vec, ent_vec_tmp;
 vector<vector<double> > rel_vec, rel_vec_tmp;
-vector<double> rel_margin;
-
-//for AdaGrad gradient update
-vector<vector<double> > ada_ent_vec, ada_rel_vec;
+vector<double> rel_margin, rel_margin_last;
 
 //origin data
 long ent_num, rel_num;
@@ -90,12 +88,7 @@ void paramater_update(
 		int ent_id = it_inner->first;
 		for (int ii = 0; ii < n; ii++){
 			double grad = it_inner->second[ii];
-			if (Grad_Method == 2){
-				ada_ent_vec[ent_id][ii] += square(grad);
-				ent_vec[ent_id][ii] -= (grad * fast_rev_sqrt(ada_ent_vec[ent_id][ii] + EPSILON) * rate);
-			}
-			else
-				ent_vec[ent_id][ii] -= (rate * grad);
+			ent_vec[ent_id][ii] -= (rate * grad);
 		}
 		normalize(ent_vec[ent_id]);
 	}
@@ -104,12 +97,7 @@ void paramater_update(
 		int rel_id = it_inner->first;
 		for (int kk = 0; kk < n; kk++){
 			double grad = it_inner->second[kk];
-			if (Grad_Method == 2){
-				ada_rel_vec[rel_id][kk] += square(grad);
-				rel_vec[rel_id][kk] -= (grad * fast_rev_sqrt(ada_rel_vec[rel_id][kk] + EPSILON) * rate);
-			}
-			else
-				rel_vec[rel_id][kk] -= (rate * grad);
+			rel_vec[rel_id][kk] -= (rate * grad);
 		}
 		normalize(rel_vec[rel_id]);
 	}
@@ -204,42 +192,30 @@ triple sampleNegTriple(unsigned pos_tri_id, bool is_head){
 	}
 	return tri_neg;
 }
-void sampleNegTriple(unsigned pos_tri_id){
-	//1:unif; 2:bern; 3:both
-	if (Neg_Method == 3){
-		train_tris_neg_unif[pos_tri_id] = sampleNegTriple(pos_tri_id, true);
-		train_tris_neg_bern[pos_tri_id] = sampleNegTriple(pos_tri_id, false);
+
+triple sampleNegTriple(unsigned pos_tri_id){
+	//1:unif; 2:bern
+	int head_pro = 500;//选择调换head作为负样本的概率
+	if (Neg_Method == 2){//bern
+		double tph = tail_num_per_head[train_tris_pos[pos_tri_id].r];
+		double hpt = head_num_per_tail[train_tris_pos[pos_tri_id].r];
+		head_pro = 1000 * tph / (tph + hpt);
 	}
-	else{
-		int head_pro = 500;//选择调换head作为负样本的概率
-		if (Neg_Method == 2){//bern
-			double tph = tail_num_per_head[train_tris_pos[pos_tri_id].r];
-			double hpt = head_num_per_tail[train_tris_pos[pos_tri_id].r];
-			head_pro = 1000 * tph / (tph + hpt);
-		}
-		bool is_head = false;
-		if ((rand() % 1000) < head_pro)
-			is_head = true;
-		if (Neg_Method == 2)
-			train_tris_neg_bern[pos_tri_id] = sampleNegTriple(pos_tri_id, is_head);
-		else
-			train_tris_neg_unif[pos_tri_id] = sampleNegTriple(pos_tri_id, is_head);
-	}	
+	bool is_head = false;
+	if ((rand() % 1000) < head_pro)
+		is_head = true;
+	return sampleNegTriple(pos_tri_id, is_head);
 }
 
 void trainTriple(unsigned tri_id){
-	sampleNegTriple(tri_id);//抽样负例放入train_neg_tris中
-	if (Neg_Method == 1){
-		trainTriple(train_tris_pos[tri_id], train_tris_neg_unif[tri_id]);
+	triple tri_neg = sampleNegTriple(tri_id);
+	trainTriple(train_tris_pos[tri_id], tri_neg);
+	if (Neg_Method == 1){		
+		train_tris_neg_unif[tri_id] = sampleNegTriple(tri_id);
 	}
-	else if (Neg_Method == 2){
-		trainTriple(train_tris_pos[tri_id], train_tris_neg_bern[tri_id]);
+	else if (Neg_Method == 2){		
+		train_tris_neg_bern[tri_id] = sampleNegTriple(tri_id);
 	}
-	else if (Neg_Method == 3){
-		trainTriple(train_tris_pos[tri_id], train_tris_neg_unif[tri_id]);
-		trainTriple(train_tris_pos[tri_id], train_tris_neg_bern[tri_id]);
-	}
-	
 }
 
 void trainTriple(){
@@ -284,9 +260,10 @@ double energy_function(triple &tri){
 
 void miniMargin(int epoch){
 	if (Margin_Type == 1) return;
-	if (epoch == 0) return;
+	if (epoch == 0) return;	
 	//vector<double> rel_margin, rel_margin_tmp;
 	//int  Margin_Type = 2;//1:所有关系共享为1; 2:每个关系一个margin; 3:每个关系前后两个margin
+	rel_margin_last = rel_margin;
 	if (Margin_Type == 2){
 		map<unsigned, vector<double> > rel_scores_pos, rel_scores_neg;
 		for (int rr = 0; rr < rel_num; rr++){
@@ -315,15 +292,22 @@ void miniMargin(int epoch){
 		double scoreSum = 0;
 		int count = 0;
 		for (int rr = 0; rr < rel_num; rr++){
-			double score;
+			double validscore;
+			double validmargin;
 			if (rel_scores_pos[rr].size() == 0 || rel_scores_neg[rr].size() == 0) continue;
-			valid(rel_scores_pos[rr], rel_scores_neg[rr], rel_margin[rr], score);
-			scoreSum += score;
+			valid(rel_scores_pos[rr], rel_scores_neg[rr], validmargin, validscore);
+			scoreSum += validscore;
 			count++;
-			//if (epoch % 50 == 0)
-			//cout << rr << "[" << id2rel[rr] << "] 阈值 : " << rel_margin[rr] << ", 准确率 : " << score << endl;
+			
+			if (epoch % 10 == 0)
+				cout << rr << "[" << id2rel[rr] << "] 阈值 : " << rel_margin[rr] << ", 准确率 : " << validscore << endl;
+
+			double testscore;
+			test(rel_scores_pos[rr], rel_scores_neg[rr], rel_margin_last[rr], testscore);
+			if (validscore > testscore)
+				rel_margin[rr] = validmargin;			
 		}
-		//if (epoch % 50 == 0)
+		//if (epoch % 10 == 0)
 		//cout << "总体效果：" << scoreSum / count << endl;
 	}
 	else{
@@ -370,39 +354,60 @@ void miniMargin(int epoch){
 		double scoreSumHead = 0;
 		int countHead = 0;
 		for (int rr = 0; rr < rel_num; rr++){
-			double score;
+			double validscore;
+			double validmargin;
 			if (rel_scores_pos[rr].size() == 0 || rel_scores_neg_head[rr].size() == 0) continue;
-			valid(rel_scores_pos[rr], rel_scores_neg_head[rr], rel_margin[2 * rr], score);
-			scoreSumHead += score;
+			valid(rel_scores_pos[rr], rel_scores_neg_head[rr], validmargin, validscore);
+			scoreSumHead += validscore;
 			countHead++;
-			//if (epoch % 50 == 0)
-			//cout << rr << "[" << id2rel[rr] << "] 阈值 : " << rel_margin[rr] << ", 前部准确率 : " << score << endl;
+			
+			if (epoch % 10 == 0)
+				cout << rr << "[" << id2rel[rr] << "] 阈值 : " << rel_margin[rr] << ", 前部准确率 : " << validscore << endl;
+
+			double testscore;
+			test(rel_scores_pos[rr], rel_scores_neg_head[rr], rel_margin_last[2 * rr], testscore);
+			if (validscore > testscore)
+				rel_margin[2 * rr] = validmargin;			
 		}
-		//if (epoch % 50 == 0)
+		//if (epoch % 10 == 0)
 		//cout << "前部总体效果：" << scoreSumHead / countHead << endl;
 
 		double scoreSumTail = 0;
 		int countTail = 0;
 		for (int rr = 0; rr < rel_num; rr++){
-			double score;
+			double validscore;
+			double validmargin;
 			if (rel_scores_pos[rr].size() == 0 || rel_scores_neg_tail[rr].size() == 0) continue;
-			valid(rel_scores_pos[rr], rel_scores_neg_tail[rr], rel_margin[2 * rr + 1], score);
-			scoreSumHead += score;
+			valid(rel_scores_pos[rr], rel_scores_neg_tail[rr], validmargin, validscore);
+			scoreSumHead += validscore;
 			countHead++;
-			//if (epoch % 50 == 0)
-			//cout << rr << "[" << id2rel[rr] << "] 阈值 : " << rel_margin[rr] << ", 后部准确率 : " << score << endl;
+
+			if (epoch % 10 == 0)
+				cout << rr << "[" << id2rel[rr] << "] 阈值 : " << rel_margin[rr] << ", 后部准确率 : " << validscore << endl;
+
+			double testscore;
+			test(rel_scores_pos[rr], rel_scores_neg_tail[rr], rel_margin_last[2 * rr + 1], testscore);
+			if (validscore > testscore)
+				rel_margin[2 * rr + 1] = validmargin;
 		}
-		//if (epoch % 50 == 0)
+		//if (epoch % 10 == 0)
 		//cout << "后部总体效果：" << scoreSumTail / countTail << endl;
 	}
 }
 
-double best_precision = 0;
 void saveModel(int epoch){
-	double precision = evaluation(Neg_Method);	
-	cout << "test precision(" << model_name << "): " << precision << endl;
-	if (precision > best_precision) best_precision = precision;
-	cout << "best precision(" << model_name << "): " << best_precision << endl;
+	double precision = evaluation(Neg_Method);
+	
+	if (Neg_Method == 1){
+		cout << "test precision(" << model_name << "): " << precision << endl;
+		if (precision > best_precision_unif) best_precision_unif = precision;
+		cout << "best precision(" << model_name << "): " << best_precision_unif << endl;
+	}
+	else{
+		cout << "test precision(" << model_name << "): " << precision << endl;
+		if (precision > best_precision_bern) best_precision_bern = precision;
+		cout << "best precision(" << model_name << "): " << best_precision_bern << endl;
+	}	
 
 	FILE* f0 = fopen(("paras." + model_name).c_str(), "w");
 	fprintf(f0, "L1_Flag\t%d\n", L1_Flag);
@@ -444,14 +449,13 @@ void saveModel(int epoch){
 
 
 
-void initModel(){
-	version = "both";
+void initModel(){	
 	if (Neg_Method == 1) version = "unif";
 	if (Neg_Method == 2) version = "bern";
 	
 	char dim_ch[5];
 	sprintf(dim_ch, "%d", n);
-	string dim_str = dim_ch;
+	dim_str = dim_ch;
 
 	model_name = dim_str + "." + version;
 
@@ -496,20 +500,18 @@ void initModel(){
 
 	if (Margin_Type == 2){
 		rel_margin.resize(rel_num, margin);
+		/*for (int rr = 0; rr < rel_num; rr++){
+			rel_margin[rr] = log(head_num_per_tail[rr] + tail_num_per_head[rr]);
+		}*/
 	}
 	else if (Margin_Type == 3){
 		rel_margin.resize(rel_num * 2, margin);
+		/*for (int rr = 0; rr < rel_num; rr++){
+			rel_margin[2 * rr] = log(head_num_per_tail[rr]);
+			rel_margin[2 * rr] = log(tail_num_per_head[rr]);
+		}*/
 	}
 	cout << "init entity vector, relation vector and formula weights are over" << endl;
-
-	//or AdaGrad gradient update, sum of square of every steps
-	ada_ent_vec.resize(ent_num);
-	for (int kk = 0; kk < ent_num; kk++)
-		ada_ent_vec[kk].resize(n, 0);
-	ada_rel_vec.resize(rel_num);
-	for (int kk = 0; kk < rel_num; kk++)
-		ada_rel_vec[kk].resize(n, 0);
-	cout << "init adagrad parameters are over" << endl;
 }
 
 void loadCorpus(){
@@ -595,7 +597,7 @@ void trainModel(){
 		cout << "epoch " << epoch << " begin at: " << ctime(&lt);
 		double last_loss_sum = loss_sum;
 		loss_sum = 0;
-		miniMargin(epoch);//选择关系的边界
+		//miniMargin(epoch);//选择关系的边界
 		trainTriple();//基于三元组的约束
 
 		lt = time(NULL);
