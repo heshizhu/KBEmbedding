@@ -58,16 +58,15 @@ vector<triple> train_tris_neg_unif, train_tris_neg_bern;//训练样本，和抽取的对应
 
 
 /*************** variables and method using for test ***************/
-double best_precision_bern = 0, best_precision_unif = 0;
+double best_precision = 0;
 
-double thre_entire_bern, thre_entire_unif;//全体阈值
-map<unsigned, double> thre_rels_bern, thre_rels_unif;//每个关系的阈值
+double thre_entire;//全体阈值
+map<unsigned, double> thre_rels;//每个关系的阈值
 
-vector<triple> valid_pos_bern, valid_neg_bern, test_pos_bern, test_neg_bern;
-vector<triple> valid_pos_unif, valid_neg_unif, test_pos_unif, test_neg_unif;
+vector<triple> valid_pos, valid_neg, test_pos, test_neg;
 
 void eval_loadCorpus();
-double evaluation(bool isbern);
+double evaluation();
 /*************** variables and method using for test ***************/
 
 bool exist(triple &tri){
@@ -89,7 +88,7 @@ void paramater_update(
 		for (int ii = 0; ii < n; ii++){
 			double grad = it_inner->second[ii];
 			ent_vec[ent_id][ii] -= (rate * grad);
-		}
+		}		
 		normalize(ent_vec[ent_id]);
 	}
 	for (map<unsigned, vector<double> >::iterator it_inner = relation_vec_grad_temp.begin();
@@ -299,13 +298,13 @@ void miniMargin(int epoch){
 			scoreSum += validscore;
 			count++;
 			
-			if (epoch % 10 == 0)
-				cout << rr << "[" << id2rel[rr] << "] 阈值 : " << rel_margin[rr] << ", 准确率 : " << validscore << endl;
+			//if (epoch % 10 == 0)
+			//	cout << rr << "[" << id2rel[rr] << "] 阈值 : " << rel_margin[rr] << ", 准确率 : " << validscore << endl;
 
-			double testscore;
-			test(rel_scores_pos[rr], rel_scores_neg[rr], rel_margin_last[rr], testscore);
-			if (validscore > testscore)
-				rel_margin[rr] = validmargin;			
+			//double testscore;
+			//test(rel_scores_pos[rr], rel_scores_neg[rr], rel_margin_last[rr], testscore);
+			//if (validscore > testscore)
+				rel_margin[rr] = 0.5 * validmargin + 0.5 * rel_margin_last[rr];
 		}
 		//if (epoch % 10 == 0)
 		//cout << "总体效果：" << scoreSum / count << endl;
@@ -361,13 +360,13 @@ void miniMargin(int epoch){
 			scoreSumHead += validscore;
 			countHead++;
 			
-			if (epoch % 10 == 0)
-				cout << rr << "[" << id2rel[rr] << "] 阈值 : " << rel_margin[rr] << ", 前部准确率 : " << validscore << endl;
+			//if (epoch % 10 == 0)
+			//	cout << rr << "[" << id2rel[rr] << "] 阈值 : " << rel_margin[rr] << ", 前部准确率 : " << validscore << endl;
 
-			double testscore;
-			test(rel_scores_pos[rr], rel_scores_neg_head[rr], rel_margin_last[2 * rr], testscore);
-			if (validscore > testscore)
-				rel_margin[2 * rr] = validmargin;			
+			//double testscore;
+			//test(rel_scores_pos[rr], rel_scores_neg_head[rr], rel_margin_last[2 * rr], testscore);
+			//if (validscore > testscore)
+				rel_margin[2 * rr] = 0.5 * validmargin + 0.5 * rel_margin_last[2 * rr];
 		}
 		//if (epoch % 10 == 0)
 		//cout << "前部总体效果：" << scoreSumHead / countHead << endl;
@@ -382,32 +381,25 @@ void miniMargin(int epoch){
 			scoreSumHead += validscore;
 			countHead++;
 
-			if (epoch % 10 == 0)
-				cout << rr << "[" << id2rel[rr] << "] 阈值 : " << rel_margin[rr] << ", 后部准确率 : " << validscore << endl;
+			//if (epoch % 10 == 0)
+			//	cout << rr << "[" << id2rel[rr] << "] 阈值 : " << rel_margin[rr] << ", 后部准确率 : " << validscore << endl;
 
-			double testscore;
-			test(rel_scores_pos[rr], rel_scores_neg_tail[rr], rel_margin_last[2 * rr + 1], testscore);
-			if (validscore > testscore)
-				rel_margin[2 * rr + 1] = validmargin;
+			//double testscore;
+			//test(rel_scores_pos[rr], rel_scores_neg_tail[rr], rel_margin_last[2 * rr + 1], testscore);
+			//if (validscore > testscore)
+				rel_margin[2 * rr + 1] = 0.5 * validmargin + 0.5 * rel_margin_last[2 * rr + 1];
 		}
 		//if (epoch % 10 == 0)
 		//cout << "后部总体效果：" << scoreSumTail / countTail << endl;
 	}
 }
 
-void saveModel(int epoch){
-	double precision = evaluation(Neg_Method);
+void saveModel(int epoch){	
+	double precision = evaluation();
 	
-	if (Neg_Method == 1){
-		cout << "test precision(" << model_name << "): " << precision << endl;
-		if (precision > best_precision_unif) best_precision_unif = precision;
-		cout << "best precision(" << model_name << "): " << best_precision_unif << endl;
-	}
-	else{
-		cout << "test precision(" << model_name << "): " << precision << endl;
-		if (precision > best_precision_bern) best_precision_bern = precision;
-		cout << "best precision(" << model_name << "): " << best_precision_bern << endl;
-	}	
+	cout << "test precision(" << model_name << "): " << precision << endl;
+	if (precision > best_precision) best_precision = precision;
+	cout << "best precision(" << model_name << "): " << best_precision << endl;
 
 	FILE* f0 = fopen(("paras." + model_name).c_str(), "w");
 	fprintf(f0, "L1_Flag\t%d\n", L1_Flag);
@@ -597,7 +589,7 @@ void trainModel(){
 		cout << "epoch " << epoch << " begin at: " << ctime(&lt);
 		double last_loss_sum = loss_sum;
 		loss_sum = 0;
-		//miniMargin(epoch);//选择关系的边界
+		miniMargin(epoch);//选择关系的边界
 		trainTriple();//基于三元组的约束
 
 		lt = time(NULL);
@@ -643,49 +635,34 @@ void load_eval_data(bool isvalid, bool ispos, bool isbern, vector<triple > &trip
 
 
 void eval_loadCorpus(){
-	if (Neg_Method){
-		load_eval_data(true, true, true, valid_pos_bern);
-		load_eval_data(true, false, true, valid_neg_bern);
-		load_eval_data(false, true, true, test_pos_bern);
-		load_eval_data(false, false, true, test_neg_bern);
+	if (Neg_Method == 1){
+		load_eval_data(true, true, true, valid_pos);
+		load_eval_data(true, false, true, valid_neg);
+		load_eval_data(false, true, true, test_pos);
+		load_eval_data(false, false, true, test_neg);
 	}
 	else{
-		load_eval_data(true, true, false, valid_pos_unif);
-		load_eval_data(true, false, false, valid_neg_unif);
-		load_eval_data(false, true, false, test_pos_unif);
-		load_eval_data(false, false, false, test_neg_unif);
+		load_eval_data(true, true, false, valid_pos);
+		load_eval_data(true, false, false, valid_neg);
+		load_eval_data(false, true, false, test_pos);
+		load_eval_data(false, false, false, test_neg);
 	}
 }
 
 
-void eval_valid(bool isbern){
-	if (isbern){
-		thre_entire_bern = 0;
-		thre_rels_bern.clear();
-		eval_valid(valid_pos_bern, valid_neg_bern,
-			thre_rels_bern, thre_entire_bern, loss_triple);
-	}
-	else{
-		thre_entire_unif = 0;
-		thre_rels_unif.clear();
-		eval_valid(valid_pos_unif, valid_neg_unif,
-			thre_rels_unif, thre_entire_unif, loss_triple);
-	}
+void eval_valid(){
+	thre_entire = 0;
+	thre_rels.clear();
+	eval_valid(valid_pos, valid_neg, thre_rels, thre_entire, loss_triple);
 }
 
-double eval_test(bool isbern){
-	if (isbern)
-		return eval_test(test_pos_bern, test_neg_bern,
-		thre_rels_bern, thre_entire_bern, loss_triple);
-	else
-		return eval_test(test_pos_unif, test_neg_unif,
-		thre_rels_unif, thre_entire_unif, loss_triple);
+double eval_test(){
+	return eval_test(test_pos, test_neg, thre_rels, thre_entire, loss_triple);
 }
 
-double evaluation(bool isbern){
-	eval_valid(isbern);
-	double test_score = eval_test(isbern);
-	return test_score;
+double evaluation(){
+	eval_valid();
+	return eval_test();
 }
 /********** end of triple classification **********/
 
